@@ -17,6 +17,7 @@ module SyncWebSocket
     HANDSHAKE_TIMEOUT=20
     CLOSE_TIMEOUT=20
     DEFAULT_CONNECTION_TIMEOUT=20
+    DEFAULT_RESPONSE_TIMEOUT=10
 
     SSL_PORT=443
     HTTP_PORT=80
@@ -109,7 +110,7 @@ module SyncWebSocket
       end
     end
 
-    def sync_text(payload, response_timeout=20)
+    def sync_text(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
       message = nil
       self.once :message do |msg|
         message = msg
@@ -120,7 +121,7 @@ module SyncWebSocket
       return message
     end
 
-    def sync_binary(payload, response_timeout=20)
+    def sync_binary(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
       message = nil
       self.once :message do |msg|
         message = msg
