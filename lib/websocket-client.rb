@@ -7,12 +7,18 @@ module SyncWebSocket
   class Client
 
     include EventEmitter
-    attr_reader :url, :secured
+    attr_reader :url, :secured, :open
+    alias_method :open?, :open
 
     RECV_BUFFER_SIZE=4096
     HANDSHAKE_TIMEOUT=20
+    CLOSE_TIMEOUT=20
+    DEFAULT_CONNECTION_TIMEOUT=20
 
-    def self.connect(url, options = {}, timeout=20)
+    SSL_PORT=443
+    HTTP_PORT=80
+
+    def self.connect(url, options = {}, timeout=DEFAULT_CONNECTION_TIMEOUT)
       client = SyncWebSocket::Client.new
       yield client if block_given?
       client.connect url, options, timeout
@@ -24,7 +30,7 @@ module SyncWebSocket
       @open = false
       @url = url
       uri = URI.parse url
-      port = uri.port || (uri.scheme == 'wss' ? 443 : 80)
+      port = uri.port || (uri.scheme == 'wss' ? SSL_PORT : HTTP_PORT)
       host = uri.host
       @secured = false
       create_socket(host, port, timeout)
@@ -57,9 +63,9 @@ module SyncWebSocket
     def write(string)
       begin
         @socket.write(string) unless @socket.closed?
-      rescue Errno::EPIPE => _e
+      rescue Errno::EPIPE => e
         @pipe_broken = true
-        emit :close
+        emit :close, e
       end
     end
 
@@ -123,10 +129,16 @@ module SyncWebSocket
     end
 
     def close
+      @driver.on :close do
+        @open = false
+        @thread.wakeup
+      end
+      @driver.close
+      sleep CLOSE_TIMEOUT
       Thread.kill @data_thread if @data_thread
       @socket.close if @socket
-      @driver.close
       @socket = nil
+      emit :close
     end
 
     private
@@ -190,3 +202,7 @@ module SyncWebSocket
     end
   end
 end
+
+ws = SyncWebSocket::Client.connect 'wss://echo.websocket.org'
+puts ws.sync_text('hola mundo')
+ws.close
