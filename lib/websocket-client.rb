@@ -202,7 +202,3 @@ module SyncWebSocket
     end
   end
 end
-
-ws = SyncWebSocket::Client.connect 'wss://echo.websocket.org'
-puts ws.sync_text('hola mundo')
-ws.close
