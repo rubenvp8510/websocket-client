@@ -4,6 +4,9 @@ require 'net/http'
 
 
 module SyncWebSocket
+  class ConnectionTimeout < Exception
+  end
+
   class Client
 
     include EventEmitter
@@ -56,7 +59,7 @@ module SyncWebSocket
       end
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
-      @open = true
+      raise ConnectionTimeout  unless @open
     end
 
 
@@ -146,7 +149,12 @@ module SyncWebSocket
     def start_reading_data
       @data_thread = Thread.new do
         @driver.on :message, -> (e) { emit :message, e.data }
-        @driver.on :open, ->(_e) { @thread.wakeup }
+        @driver.on :open, ->(_e) {
+          @open = true
+          @thread.wakeup
+        }
+        @driver.on :error, ->(e) { emit :error, e.message }
+
         while true do
           begin
             data = @socket.readpartial RECV_BUFFER_SIZE unless @socket.closed?
@@ -185,14 +193,11 @@ module SyncWebSocket
         else
           write_array = [@socket]
         end
-
-        start = Time.now
         if IO.select(read_array, write_array, [@socket], timeout)
-          waited = Time.now - start
-          return timeout - waited
+          return
         end
       end
-      raise SocketTimeout, "#{type} timeout"
+      raise ConnectionTimeout
     end
 
     def set_headers(headers)
