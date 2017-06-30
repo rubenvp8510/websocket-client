@@ -21,6 +21,7 @@ module SyncWebSocket
 
     def connect(url, options = {}, timeout)
       return if @socket
+      @open = false
       @url = url
       uri = URI.parse url
       port = uri.port || (uri.scheme == 'wss' ? 443 : 80)
@@ -42,11 +43,10 @@ module SyncWebSocket
       @driver = WebSocket::Driver.client(self, options)
       set_headers(options[:headers]) unless options[:headers].nil?
       @thread = Thread.current
-      @message = nil
       @driver.start
-      @waiting_for_message = false
       reading_data
       sleep HANDSHAKE_TIMEOUT
+      @open = true
     end
 
 
@@ -60,13 +60,7 @@ module SyncWebSocket
 
     def reading_data
       @data_thread = Thread.new do
-        @driver.on :message, -> (e) {
-          if @waiting_for_message
-            @waiting_for_message = false
-            @message = e.data
-            @thread.wakeup
-          end
-        }
+        @driver.on :message, -> (e) { emit :message, e.data }
         @driver.on :open, ->(_e) { @thread.wakeup }
         while true do
           begin
@@ -93,10 +87,14 @@ module SyncWebSocket
     end
 
     def sync_send(payload, response_timeout=20)
-      @waiting_for_message = true
+      message = nil
+      self.once :message do |msg|
+        message = msg
+        @thread.wakeup
+      end
       self.send(payload)
       sleep response_timeout
-      return @message
+      return message
     end
 
     def close
@@ -155,4 +153,4 @@ end
 ws = SyncWebSocket::Client.connect('wss://echo.websocket.org')
 puts ws.sync_send('Rock it with HTML5 WebSocket')
 ws.close
-
+sleep 3
