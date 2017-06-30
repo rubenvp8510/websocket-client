@@ -86,13 +86,48 @@ module SyncWebSocket
       end
     end
 
-    def sync_send(payload, response_timeout=20)
+    def text(payload)
+      case payload
+      when Numeric then
+        @driver.text(payload.to_s)
+      when String then
+        @driver.text(payload)
+      else
+        false
+      end
+    end
+
+    def binary(payload)
+      case payload
+      when Array then
+        @driver.binary(payload)
+      when Numeric then
+        @driver.binary(payload.to_s.bytes)
+      when String then
+        @driver.binary(payload.bytes)
+      else
+        false
+      end
+    end
+
+    def sync_text(payload, response_timeout=20)
       message = nil
       self.once :message do |msg|
         message = msg
         @thread.wakeup
       end
-      self.send(payload)
+      self.text(payload)
+      sleep response_timeout
+      return message
+    end
+
+    def sync_binary(payload, response_timeout=20)
+      message = nil
+      self.once :message do |msg|
+        message = msg
+        @thread.wakeup
+      end
+      self.binary(payload)
       sleep response_timeout
       return message
     end
@@ -151,6 +186,5 @@ module SyncWebSocket
 end
 
 ws = SyncWebSocket::Client.connect('wss://echo.websocket.org')
-puts ws.sync_send('Rock it with HTML5 WebSocket')
 ws.close
 sleep 3
