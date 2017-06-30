@@ -44,7 +44,11 @@ module SyncWebSocket
       set_headers(options[:headers]) unless options[:headers].nil?
       @thread = Thread.current
       @driver.start
-      reading_data
+      once :__close do |err|
+        close
+        emit :close, err
+      end
+      start_reading_data
       sleep HANDSHAKE_TIMEOUT
       @open = true
     end
@@ -55,21 +59,7 @@ module SyncWebSocket
         @socket.write(string) unless @socket.closed?
       rescue Errno::EPIPE => _e
         @pipe_broken = true
-      end
-    end
-
-    def reading_data
-      @data_thread = Thread.new do
-        @driver.on :message, -> (e) { emit :message, e.data }
-        @driver.on :open, ->(_e) { @thread.wakeup }
-        while true do
-          begin
-            data = @socket.readpartial RECV_BUFFER_SIZE unless @socket.closed?
-            @driver.parse data unless @socket.closed?
-          rescue Exception
-            break
-          end
-        end
+        emit :close
       end
     end
 
@@ -140,6 +130,22 @@ module SyncWebSocket
     end
 
     private
+
+    def start_reading_data
+      @data_thread = Thread.new do
+        @driver.on :message, -> (e) { emit :message, e.data }
+        @driver.on :open, ->(_e) { @thread.wakeup }
+        while true do
+          begin
+            data = @socket.readpartial RECV_BUFFER_SIZE unless @socket.closed?
+            @driver.parse data unless @socket.closed?
+          rescue Exception
+            break
+          end
+        end
+      end
+    end
+
     def create_socket(host, port, timeout=20)
       family = Socket::AF_INET
       address = Socket.getaddrinfo(host, nil, family).first[3]
@@ -184,7 +190,3 @@ module SyncWebSocket
     end
   end
 end
-
-ws = SyncWebSocket::Client.connect('wss://echo.websocket.org')
-ws.close
-sleep 3
