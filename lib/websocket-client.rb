@@ -18,12 +18,11 @@
 require 'event_emitter'
 require 'websocket/driver'
 require 'net/http'
+require 'resolv'
+require 'ipaddr'
 
 module SyncWebSocket
-  class ConnectionTimeout < Exception
-  end
-
-  class HandshakeTimeout < Exception
+  class ConnectionError < Exception
   end
 
   class Client
@@ -86,7 +85,7 @@ module SyncWebSocket
 
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
-      raise HandshakeTimeout unless @open
+      raise ConnectionError, 'Handshake timeout' unless @open
     end
 
 
@@ -192,8 +191,14 @@ module SyncWebSocket
     end
 
     def create_socket(host, port, timeout=20)
-      family = Socket::AF_INET
-      address = Socket.getaddrinfo(host, nil, family).first[3]
+      begin
+        address = Resolv.getaddress(host)
+      rescue Resolv::ResolvError
+        raise ConnectionError, "Hostname not known: #{host}"
+      end
+      ip_addr = IPAddr.new address
+      family = ip_addr.family
+
       @sockaddr = Socket.pack_sockaddr_in(port, address)
       @socket = Socket.new(family, Socket::SOCK_STREAM, 0)
       @socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
@@ -208,7 +213,10 @@ module SyncWebSocket
         @socket.connect_nonblock(@sockaddr)
       rescue Errno::EISCONN
         # Successfully connected
+      rescue Errno::ECONNREFUSED
+        raise ConnectionError, "Connection refused for [#{ip_addr}]:#{port} "
       end
+
     end
 
     def select_timeout(type, timeout)
@@ -222,7 +230,7 @@ module SyncWebSocket
           return
         end
       end
-      raise ConnectionTimeout
+      raise ConnectionError, 'Connection timeout'
     end
 
     def set_headers(headers)

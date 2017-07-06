@@ -13,7 +13,6 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'websocket-driver'
   gem.add_runtime_dependency 'event_emitter',  '~> 0.2'
 
-
   gem.add_development_dependency 'coveralls', '~> 0.8'
   gem.add_development_dependency 'rspec-rails', '~> 3.0'
   gem.add_development_dependency 'rake', '~> 11'
