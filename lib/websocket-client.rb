@@ -23,6 +23,9 @@ module SyncWebSocket
   class ConnectionTimeout < Exception
   end
 
+  class HandshakeTimeout < Exception
+  end
+
   class Client
 
     include EventEmitter
@@ -82,7 +85,7 @@ module SyncWebSocket
 
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
-      raise ConnectionTimeout unless @open
+      raise HandshakeTimeout unless @open
     end
 
 
