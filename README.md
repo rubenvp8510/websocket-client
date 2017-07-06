@@ -1,1 +1,1 @@
-[![Build Status](https://travis-ci.org/rubenvp851ser/status-images/ser/status-images/ser/status-images/0/websocket-client.sser/status-images/vg?branch=master)](https://travis-ci.org/rubenvp8510/websocket-client)
+[![Build Status](https://travis-ci.org/rubenvp8510/websocket-client.svg?branch=master)](https://travis-ci.org/rubenvp8510/websocket-client)
