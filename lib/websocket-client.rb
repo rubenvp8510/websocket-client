@@ -50,11 +50,11 @@ module SyncWebSocket
       @open = false
       @url = url
       uri = URI.parse url
-      port = uri.port || (uri.scheme == 'wss' ? DEFAULT_SSL_PORT : DEFAULT_HTTP_PORT)
+      @secured = %w(https wss).include? uri.scheme
+      port = uri.port || (@secured ? DEFAULT_SSL_PORT : DEFAULT_HTTP_PORT)
       host = uri.host
-      @secured = false
       create_socket(host, port, timeout)
-      if %w(https wss).include? uri.scheme
+      if @secured
         ctx = OpenSSL::SSL::SSLContext.new
         ctx.ssl_version = options[:ssl_version] || 'SSLv23'
         ctx.verify_mode = options[:verify_mode] || OpenSSL::SSL::VERIFY_NONE #use VERIFY_PEER for verification
@@ -63,7 +63,6 @@ module SyncWebSocket
         ctx.cert_store = cert_store
         @socket = ::OpenSSL::SSL::SSLSocket.new(@socket, ctx)
         @socket.connect
-        @secured = true
       end
 
       @driver = WebSocket::Driver.client(self, options)
