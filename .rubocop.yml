@@ -4,6 +4,7 @@
 AllCops:
   Exclude:
     - Gemfile.dev.rb
+    - vendor/**/*
 
 #
 # Overrides
