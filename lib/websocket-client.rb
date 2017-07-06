@@ -35,8 +35,8 @@ module SyncWebSocket
     DEFAULT_CONNECTION_TIMEOUT=20
     DEFAULT_RESPONSE_TIMEOUT=10
 
-    SSL_PORT=443
-    HTTP_PORT=80
+    DEFAULT_SSL_PORT=443
+    DEFAULT_HTTP_PORT=80
 
     def self.connect(url, options = {}, timeout=DEFAULT_CONNECTION_TIMEOUT)
       client = SyncWebSocket::Client.new
@@ -50,7 +50,7 @@ module SyncWebSocket
       @open = false
       @url = url
       uri = URI.parse url
-      port = uri.port || (uri.scheme == 'wss' ? SSL_PORT : HTTP_PORT)
+      port = uri.port || (uri.scheme == 'wss' ? DEFAULT_SSL_PORT : DEFAULT_HTTP_PORT)
       host = uri.host
       @secured = false
       create_socket(host, port, timeout)
@@ -68,12 +68,19 @@ module SyncWebSocket
 
       @driver = WebSocket::Driver.client(self, options)
       set_headers(options[:headers]) unless options[:headers].nil?
-      @thread = Thread.current
+      thread = Thread.current
       @driver.start
+
       once :__close do |err|
         close
         emit :close, err
       end
+
+      @driver.on :open, ->(_e) {
+        @open = true
+        thread.wakeup
+      }
+
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
       raise ConnectionTimeout unless @open
@@ -128,9 +135,10 @@ module SyncWebSocket
 
     def sync_text(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
       message = nil
+      thread = Thread.current
       self.once :message do |msg|
         message = msg
-        @thread.wakeup
+        thread.wakeup
       end
       self.text(payload)
       sleep response_timeout
@@ -139,9 +147,10 @@ module SyncWebSocket
 
     def sync_binary(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
       message = nil
+      thread = Thread.current
       self.once :message do |msg|
         message = msg
-        @thread.wakeup
+        thread.wakeup
       end
       self.binary(payload)
       sleep response_timeout
@@ -149,9 +158,10 @@ module SyncWebSocket
     end
 
     def close
+      thread = Thread.current
       @driver.on :close do
         @open = false
-        @thread.wakeup
+        thread.wakeup
       end
       @driver.close
       sleep CLOSE_TIMEOUT
@@ -166,12 +176,7 @@ module SyncWebSocket
     def start_reading_data
       @data_thread = Thread.new do
         @driver.on :message, -> (e) { emit :message, e.data }
-        @driver.on :open, ->(_e) {
-          @open = true
-          @thread.wakeup
-        }
         @driver.on :error, ->(e) { emit :error, e.message }
-
         while true do
           begin
             data = @socket.readpartial RECV_BUFFER_SIZE unless @socket.closed?
