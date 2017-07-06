@@ -1,14 +1,6 @@
 # possible values:
 # https://github.com/bbatsov/rubocop/blob/master/config/
 
-AllCops:
-  Exclude:
-    - Gemfile.dev.rb
-    - vendor/**/*
-
-#
-# Overrides
-#
 CyclomaticComplexity:
   Max: 9
   Severity: refactor
@@ -33,5 +25,3 @@ ModuleLength:
   Enabled: false
 Style/ClassAndModuleChildren:
   Enabled: false
-Style/BracesAroundHashParameters:
-  EnforcedStyle: context_dependent
