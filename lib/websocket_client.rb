@@ -26,29 +26,28 @@ module SyncWebSocket
   end
 
   class Client
-
     include EventEmitter
     attr_reader :url, :secured, :open
     alias_method :open?, :open
 
-    RECV_BUFFER_SIZE=4096
-    HANDSHAKE_TIMEOUT=20
+    RECV_BUFFER_SIZE = 4096
+    HANDSHAKE_TIMEOUT = 20
 
-    DEFAULT_CLOSE_TIMEOUT=20
-    DEFAULT_CONNECTION_TIMEOUT=20
-    DEFAULT_RESPONSE_TIMEOUT=10
+    DEFAULT_CLOSE_TIMEOUT = 20
+    DEFAULT_CONNECTION_TIMEOUT = 20
+    DEFAULT_RESPONSE_TIMEOUT = 10
 
-    DEFAULT_SSL_PORT=443
-    DEFAULT_HTTP_PORT=80
+    DEFAULT_SSL_PORT = 443
+    DEFAULT_HTTP_PORT = 80
 
-    def self.connect(url, options = {}, timeout=DEFAULT_CONNECTION_TIMEOUT)
+    def self.connect(url, options = {}, timeout = DEFAULT_CONNECTION_TIMEOUT)
       client = SyncWebSocket::Client.new
       yield client if block_given?
-      client.connect url, options, timeout
+      client.connect url, timeout, options
       client
     end
 
-    def connect(url, options = {}, timeout)
+    def connect(url, timeout, options = {})
       return if @socket
       @open = false
       @url = url
@@ -60,7 +59,7 @@ module SyncWebSocket
       if @secured
         ctx = OpenSSL::SSL::SSLContext.new
         ctx.ssl_version = options[:ssl_version] || 'SSLv23'
-        ctx.verify_mode = options[:verify_mode] || OpenSSL::SSL::VERIFY_NONE #use VERIFY_PEER for verification
+        ctx.verify_mode = options[:verify_mode] || OpenSSL::SSL::VERIFY_NONE
         cert_store = OpenSSL::X509::Store.new
         cert_store.set_default_paths
         ctx.cert_store = cert_store
@@ -69,7 +68,7 @@ module SyncWebSocket
       end
 
       @driver = WebSocket::Driver.client(self, options)
-      set_headers(options[:headers]) unless options[:headers].nil?
+      process_headers(options[:headers]) unless options[:headers].nil?
       thread = Thread.current
       @driver.start
 
@@ -78,24 +77,21 @@ module SyncWebSocket
         emit :close, err
       end
 
-      @driver.on :open, ->(_e) {
+      @driver.on :open, lambda { |_e|
         @open = true
         thread.wakeup
       }
 
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
-      raise ConnectionError, 'Handshake timeout' unless @open
+      fail ConnectionError, 'Handshake timeout' unless @open
     end
 
-
     def write(string)
-      begin
-        @socket.write(string) unless @socket.closed?
-      rescue Errno::EPIPE => e
-        @pipe_broken = true
-        emit :close, e
-      end
+      @socket.write(string) unless @socket.closed?
+    rescue Errno::EPIPE => e
+      @pipe_broken = true
+      emit :close, e
     end
 
     def send(payload)
@@ -135,31 +131,31 @@ module SyncWebSocket
       end
     end
 
-    def sync_text(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
+    def sync_text(payload, response_timeout = DEFAULT_RESPONSE_TIMEOUT)
       message = nil
       thread = Thread.current
-      self.once :message do |msg|
+      once :message do |msg|
         message = msg
         thread.wakeup
       end
-      self.text(payload)
+      text(payload)
       sleep response_timeout
-      return message
+      message
     end
 
-    def sync_binary(payload, response_timeout=DEFAULT_RESPONSE_TIMEOUT)
+    def sync_binary(payload, response_timeout = DEFAULT_RESPONSE_TIMEOUT)
       message = nil
       thread = Thread.current
-      self.once :message do |msg|
+      once :message do |msg|
         message = msg
         thread.wakeup
       end
-      self.binary(payload)
+      binary(payload)
       sleep response_timeout
-      return message
+      message
     end
 
-    def close(timeout=DEFAULT_CLOSE_TIMEOUT)
+    def close(timeout = DEFAULT_CLOSE_TIMEOUT)
       thread = Thread.current
       @driver.on :close do
         @open = false
@@ -179,18 +175,18 @@ module SyncWebSocket
       @data_thread = Thread.new do
         @driver.on :message, -> (e) { emit :message, e.data }
         @driver.on :error, ->(e) { emit :error, e.message }
-        while true do
+        loop do
           begin
             data = @socket.readpartial RECV_BUFFER_SIZE unless @socket.closed?
             @driver.parse data unless @socket.closed?
-          rescue Exception
+          rescue StandardError
             break
           end
         end
       end
     end
 
-    def create_socket(host, port, timeout=20)
+    def create_socket(host, port, timeout = 20)
       begin
         address = Resolv.getaddress(host)
       rescue Resolv::ResolvError
@@ -212,28 +208,21 @@ module SyncWebSocket
       begin
         @socket.connect_nonblock(@sockaddr)
       rescue Errno::EISCONN
-        # Successfully connected
+        @socket
       rescue Errno::ECONNREFUSED
         raise ConnectionError, "Connection refused for [#{ip_addr}]:#{port} "
       end
-
     end
 
     def select_timeout(type, timeout)
       if timeout >= 0
-        if type == :read
-          read_array = [@socket]
-        else
-          write_array = [@socket]
-        end
-        if IO.select(read_array, write_array, [@socket], timeout)
-          return
-        end
+        type == :read ? read_array = [@socket] : write_array = [@socket]
+        IO.select(read_array, write_array, [@socket], timeout) && return
       end
-      raise ConnectionError, 'Connection timeout'
+      fail ConnectionError, 'Connection timeout'
     end
 
-    def set_headers(headers)
+    def process_headers(headers)
       headers.each do |k, v|
         @driver.set_header(k, v)
       end
