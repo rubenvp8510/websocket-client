@@ -34,7 +34,8 @@ module SyncWebSocket
 
     RECV_BUFFER_SIZE=4096
     HANDSHAKE_TIMEOUT=20
-    CLOSE_TIMEOUT=20
+
+    DEFAULT_CLOSE_TIMEOUT=20
     DEFAULT_CONNECTION_TIMEOUT=20
     DEFAULT_RESPONSE_TIMEOUT=10
 
@@ -159,14 +160,14 @@ module SyncWebSocket
       return message
     end
 
-    def close
+    def close(timeout=DEFAULT_CLOSE_TIMEOUT)
       thread = Thread.current
       @driver.on :close do
         @open = false
         thread.wakeup
       end
       @driver.close
-      sleep CLOSE_TIMEOUT
+      sleep timeout
       Thread.kill @data_thread if @data_thread
       @socket.close if @socket
       @socket = nil
