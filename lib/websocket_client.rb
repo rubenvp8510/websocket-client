@@ -155,7 +155,9 @@ module SyncWebSocket
       @driver.close
       sleep timeout
       Thread.kill @data_thread if @data_thread
-      @socket.close if @socket
+      @data_thread.join
+      @data_thread = nil
+      @socket && (@secured ? @socket.sync_close : @socket.close)
       @socket = nil
       emit :close
     end

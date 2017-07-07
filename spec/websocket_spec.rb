@@ -1,6 +1,6 @@
 require 'spec_helper'
 require 'websocket_client'
-
+WAITING_TIME_FOR_ASYNC = 30
 [:secure, :non_secure].each do |security_context|
   describe SyncWebSocket::Client do
     let(:security_prefix) do
@@ -51,11 +51,12 @@ require 'websocket_client'
     end
 
     describe "Testing sending/receiving data for context #{security_context}" do
-      before(:all) do
+      before(:each) do
         protocol = :secure ? 'wss' : 'ws'
         @ws = SyncWebSocket::Client.connect "#{protocol}://echo.websocket.org"
       end
-      after(:all) do
+
+      after(:each) do
         @ws.close
       end
 
@@ -85,7 +86,6 @@ require 'websocket_client'
         th = Thread.current
         @ws.on :message do |msg|
           message = msg
-          puts 'Calling this..'
           th.wakeup
         end
         @ws.text 'hello world'
@@ -98,15 +98,14 @@ require 'websocket_client'
         th = Thread.current
         @ws.on :message do |msg|
           message = msg
-          puts 'Calling this..'
           th.wakeup
         end
         @ws.text 100
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq '100'
         message = nil
         @ws.text 'again'
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq 'again'
       end
 
@@ -114,17 +113,16 @@ require 'websocket_client'
         message = nil
         th = Thread.current
         @ws.on :message do |msg|
-          puts 'Calling this..'
           message = msg
           th.wakeup
         end
         @ws.binary [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100]
 
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100]
         message = nil
         @ws.binary 'again'
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq 'again'.bytes
       end
 
@@ -133,11 +131,10 @@ require 'websocket_client'
         th = Thread.current
         @ws.on :message do |msg|
           message = msg
-          puts 'Calling this..'
           th.wakeup
         end
         @ws.send('Hello world')
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq 'Hello world'
       end
 
@@ -146,11 +143,10 @@ require 'websocket_client'
         th = Thread.current
         @ws.on :message do |msg|
           message = msg
-          puts 'Calling this..'
           th.wakeup
         end
         @ws.send([72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100])
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100]
       end
 
@@ -162,7 +158,7 @@ require 'websocket_client'
           th.wakeup
         end
         @ws.send(18)
-        sleep 20
+        sleep WAITING_TIME_FOR_ASYNC
         expect(message).to eq '18'
       end
 
@@ -171,7 +167,6 @@ require 'websocket_client'
         th = Thread.current
         @ws.on :message do |msg|
           message = msg
-          puts 'Calling this..'
           th.wakeup
         end
         sended = @ws.send(nil)
