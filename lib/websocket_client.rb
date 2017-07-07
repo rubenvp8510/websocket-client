@@ -134,27 +134,15 @@ module SyncWebSocket
     end
 
     def sync_text(payload, response_timeout = DEFAULT_RESPONSE_TIMEOUT)
-      message = nil
-      thread = Thread.current
-      once :message do |msg|
-        message = msg
-        thread.wakeup
+      sync_method(response_timeout) do
+        text(payload)
       end
-      text(payload)
-      sleep response_timeout
-      message
     end
 
     def sync_binary(payload, response_timeout = DEFAULT_RESPONSE_TIMEOUT)
-      message = nil
-      thread = Thread.current
-      once :message do |msg|
-        message = msg
-        thread.wakeup
+      sync_method(response_timeout) do
+        binary(payload)
       end
-      binary(payload)
-      sleep response_timeout
-      message
     end
 
     def close(timeout = DEFAULT_CLOSE_TIMEOUT)
@@ -172,6 +160,18 @@ module SyncWebSocket
     end
 
     private
+
+    def sync_method(response_timeout = DEFAULT_RESPONSE_TIMEOUT)
+      message = nil
+      thread = Thread.current
+      once :message do |msg|
+        message = msg
+        thread.wakeup
+      end
+      yield
+      sleep response_timeout
+      message
+    end
 
     def start_reading_data
       @data_thread = Thread.new do
