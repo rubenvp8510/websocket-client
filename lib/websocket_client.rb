@@ -68,9 +68,10 @@ module SyncWebSocket
         @socket = ::OpenSSL::SSL::SSLSocket.new(@socket, ctx)
         @socket.connect
       end
-
+      headers = options[:headers] || {}
+      options.delete(:headers)
       @driver = WebSocket::Driver.client(self, options)
-      process_headers(options[:headers]) unless options[:headers].nil?
+      process_headers(headers)
       thread = Thread.current
       @driver.start
 
