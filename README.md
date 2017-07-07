@@ -1,1 +1,1 @@
-[![Build Status](https://travis-ci.org/rubenvp8510/websocket-client.svg?branch=master)](https://travis-ci.org/rubenvp8510/websocket-client)
+[![Build Status](https://travis-ci.org/rubenvp8510/websocket-client.svg?branch=master)](https://travis-ci.org/rubenvp8510/websocket-client)  [![Coverage Status](https://coveralls.io/repos/github/rubenvp8510/websocket-client/badge.svg?branch=master)](https://coveralls.io/github/rubenvp8510/websocket-client?branch=master)
