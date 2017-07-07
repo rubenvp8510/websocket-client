@@ -13,6 +13,8 @@ Metrics/ParameterLists:
 #
 # Enabled/Disabled
 #
+Style/Alias:
+  Enabled: false
 ClassLength:
   Enabled: false
 Documentation:
@@ -24,4 +26,6 @@ Metrics/AbcSize:
 ModuleLength:
   Enabled: false
 Style/ClassAndModuleChildren:
+  Enabled: false
+Style/SignalException:
   Enabled: false

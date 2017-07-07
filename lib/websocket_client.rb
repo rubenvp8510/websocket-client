@@ -24,7 +24,7 @@ require 'socket'
 require 'openssl'
 
 module SyncWebSocket
-  class ConnectionError < Exception
+  class ConnectionError < RuntimeError
   end
 
   class Client
@@ -86,7 +86,7 @@ module SyncWebSocket
 
       start_reading_data
       sleep HANDSHAKE_TIMEOUT
-      fail ConnectionError, 'Handshake timeout' unless @open
+      raise ConnectionError, 'Handshake timeout' unless @open
     end
 
     def write(string)
@@ -175,7 +175,7 @@ module SyncWebSocket
 
     def start_reading_data
       @data_thread = Thread.new do
-        @driver.on :message, -> (e) { emit :message, e.data }
+        @driver.on :message, ->(e) { emit :message, e.data }
         @driver.on :error, ->(e) { emit :error, e.message }
         loop do
           begin
@@ -221,7 +221,7 @@ module SyncWebSocket
         type == :read ? read_array = [@socket] : write_array = [@socket]
         IO.select(read_array, write_array, [@socket], timeout) && return
       end
-      fail ConnectionError, 'Connection timeout'
+      raise ConnectionError, 'Connection timeout'
     end
 
     def process_headers(headers)
