@@ -20,6 +20,8 @@ require 'websocket/driver'
 require 'net/http'
 require 'resolv'
 require 'ipaddr'
+require 'socket'
+require 'openssl'
 
 module SyncWebSocket
   class ConnectionError < Exception
