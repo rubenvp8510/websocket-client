@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'websocket_client'
+
 describe SyncWebSocket::Client do
   it 'cannot open a connection to the wrong host' do
     expect { SyncWebSocket::Client.connect 'ws://localhost' }
@@ -10,6 +11,11 @@ describe SyncWebSocket::Client do
 
   it 'can open a connection' do
     ws = SyncWebSocket::Client.connect 'ws://echo.websocket.org'
+    expect(ws.open?).to be true
+  end
+
+  it 'can open a connection with port' do
+    ws = SyncWebSocket::Client.connect 'ws://echo.websocket.org:80'
     expect(ws.open?).to be true
   end
 
