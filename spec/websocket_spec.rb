@@ -1,3 +1,4 @@
+require 'spec_helper'
 require 'websocket_client'
 describe SyncWebSocket::Client do
   it 'cannot open a connection to the wrong host' do
