@@ -73,6 +73,9 @@ module SyncWebSocket
       @driver = WebSocket::Driver.client(self, options)
       process_headers(headers)
       thread = Thread.current
+      @driver.on :ping, lambda { |_e|
+        @driver.pong
+      }
       @driver.start
 
       once :__close do |err|
