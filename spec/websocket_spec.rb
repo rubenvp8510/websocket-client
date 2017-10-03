@@ -24,6 +24,7 @@ WAITING_TIME_FOR_ASYNC = 30
       it 'can open a connection' do
         ws = SyncWebSocket::Client.connect "#{security_prefix}://echo.websocket.org"
         expect(ws.open?).to be true
+        ws.close
       end
 
       it 'can open a connection with headers' do
@@ -36,11 +37,13 @@ WAITING_TIME_FOR_ASYNC = 30
         }
         ws = SyncWebSocket::Client.connect "#{security_prefix}://echo.websocket.org", ws_options
         expect(ws.open?).to be true
+        ws.close
       end
 
       it 'can open a connection with port' do
         ws = SyncWebSocket::Client.connect "#{security_prefix}://echo.websocket.org"
         expect(ws.open?).to be true
+        ws.close
       end
 
       it 'can close the connection' do
