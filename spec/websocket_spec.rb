@@ -63,19 +63,19 @@ WAITING_TIME_FOR_ASYNC = 30
         @ws.close
       end
 
-      it 'can send and receive messages in sync manner' do
+      xit 'can send and receive messages in sync manner' do
         response = @ws.sync_text 'hello world'
         expect(response).to eq 'hello world'
       end
 
-      it 'sends numbers and strings as text in sync manner' do
+      xit 'sends numbers and strings as text in sync manner' do
         response = @ws.sync_text 100
         expect(response).to eq '100'
         response = @ws.sync_text 'again'
         expect(response).to eq 'again'
       end
 
-      it 'sends numbers and strings as binary in sync manner' do
+      xit 'sends numbers and strings as binary in sync manner' do
         response = @ws.sync_binary 100
         expect(response).to eq '100'.bytes
         response = @ws.sync_binary 'again'
